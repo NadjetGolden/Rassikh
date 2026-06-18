@@ -8,29 +8,51 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+
       - name: Install Bubblewrap
         run: npm install -g @bubblewrap/cli
+
       - name: Init Bubblewrap
-        run: bubblewrap init --manifest https://nadjetgolden.github.io/rassikh/manifest.json --directory twa-app
+        run: |
+          echo "" | bubblewrap init \
+            --manifest https://nadjetgolden.github.io/rassikh/manifest.json \
+            --directory twa-app \
+            --packageId io.github.nadjetgolden.rassikh \
+            --name "راسخ" \
+            --launcherName "راسخ" \
+            --themeColor "#627f3d" \
+            --backgroundColor "#254f17" \
+            --startUrl "/" \
+            --iconUrl "https://nadjetgolden.github.io/rassikh/icon-512x512.png" \
+            --maskableIconUrl "https://nadjetgolden.github.io/rassikh/icon-512x512.png" \
+            --signingKeyPath ./signing.keystore \
+            --signingKeyAlias android \
+            --signingKeyStorePassword password123 \
+            --signingKeyPassword password123
         env:
           BUBBLEWRAP_DISABLE_TELEMETRY: true
+
       - name: Build APK
         run: |
           cd twa-app
           bubblewrap build --skipPwaValidation
         env:
           BUBBLEWRAP_DISABLE_TELEMETRY: true
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
