@@ -9,11 +9,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -23,38 +18,87 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Bubblewrap
-        run: npm install -g @bubblewrap/cli
-
-      - name: Init Bubblewrap
+      - name: Create TWA Project
         run: |
-          echo "" | bubblewrap init \
-            --manifest https://nadjetgolden.github.io/rassikh/manifest.json \
-            --directory twa-app \
-            --packageId io.github.nadjetgolden.rassikh \
-            --name "راسخ" \
-            --launcherName "راسخ" \
-            --themeColor "#627f3d" \
-            --backgroundColor "#254f17" \
-            --startUrl "/" \
-            --iconUrl "https://nadjetgolden.github.io/rassikh/icon-512x512.png" \
-            --maskableIconUrl "https://nadjetgolden.github.io/rassikh/icon-512x512.png" \
-            --signingKeyPath ./signing.keystore \
-            --signingKeyAlias android \
-            --signingKeyStorePassword password123 \
-            --signingKeyPassword password123
-        env:
-          BUBBLEWRAP_DISABLE_TELEMETRY: true
+          mkdir -p twa/app/src/main/res/mipmap-xxxhdpi
+          mkdir -p twa/app/src/main/java/io/github/nadjetgolden/rassikh
+
+          # Download icon
+          curl -L "https://nadjetgolden.github.io/rassikh/icon-512x512.png" -o twa/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
+          # settings.gradle
+          cat > twa/settings.gradle << 'EOF'
+          include ':app'
+          EOF
+
+          # build.gradle (project)
+          cat > twa/build.gradle << 'EOF'
+          buildscript {
+            repositories { google(); mavenCentral() }
+            dependencies { classpath 'com.android.tools.build:gradle:8.2.0' }
+          }
+          allprojects { repositories { google(); mavenCentral() } }
+          EOF
+
+          # gradle wrapper
+          mkdir -p twa/gradle/wrapper
+          cat > twa/gradle/wrapper/gradle-wrapper.properties << 'EOF'
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.2-bin.zip
+          EOF
+
+          # app/build.gradle
+          cat > twa/app/build.gradle << 'EOF'
+          plugins { id 'com.android.application' }
+          android {
+            compileSdk 34
+            defaultConfig {
+              applicationId "io.github.nadjetgolden.rassikh"
+              minSdk 21
+              targetSdk 34
+              versionCode 1
+              versionName "1.0"
+            }
+            buildTypes {
+              release {
+                minifyEnabled false
+                signingConfig signingConfigs.debug
+              }
+            }
+            namespace "io.github.nadjetgolden.rassikh"
+          }
+          dependencies {
+            implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+          }
+          EOF
+
+          # AndroidManifest
+          mkdir -p twa/app/src/main
+          cat > twa/app/src/main/AndroidManifest.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <application android:label="راسخ" android:icon="@mipmap/ic_launcher">
+              <activity android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"
+                android:exported="true">
+                <meta-data android:name="android.support.customtabs.trusted.DEFAULT_URL"
+                  android:value="https://nadjetgolden.github.io/rassikh/" />
+                <intent-filter android:autoVerify="true">
+                  <action android:name="android.intent.action.MAIN"/>
+                  <category android:name="android.intent.category.LAUNCHER"/>
+                </intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          EOF
 
       - name: Build APK
         run: |
-          cd twa-app
-          bubblewrap build --skipPwaValidation
-        env:
-          BUBBLEWRAP_DISABLE_TELEMETRY: true
+          cd twa
+          chmod +x gradlew 2>/dev/null || true
+          gradle wrapper
+          ./gradlew assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: rasikh-apk
-          path: twa-app/*.apk
+          path: twa/app/build/outputs/apk/**/*.apk
