@@ -1,1 +1,8 @@
-
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "io.github.nadjetgolden.twa",
+    "sha256_cert_fingerprints": ["41:40:7C:9E:08:F9:45:5D:F9:B3:59:FE:88:4A:BE:B1:66:9D:77:B3:17:CE:57:0A:B6:29:72:A3:BD:38:34:4A"]
+  }
+}]
